@@ -48,7 +48,7 @@
 | Nov 11     	| **Shell lab**                         	| **Lab6**          | 　           	|
 | Nov 12     	| Network Programming (Part II)         	| 11.5-11.6        	|              	|
 | Nov 14     	| Concurrent programming                	| 12.1-12.3        	| L6 Due       	|
-| Nov 18     	| **Proxy lab (Part I) **               	| **Lab7a**         | 　           	|
+| Nov 18     	| **Proxy lab (Part I)**               	| **Lab7a**         | 　           	|
 | Nov 19     	| Synchronization: Basic                	| 12.4, 12.5.1-3   	|              	|
 | Nov 21     	| Synchronization: Advanced             	| 12.5.4-5, 12.7-8 	|              	|
 | Nov 25     	| **Proxy lab (Part II)**               	| **Lab7b**        	| 　           	|
