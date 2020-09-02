@@ -2,9 +2,9 @@
 
 ## Resources
 
-CSAPP Textbook & lab resources: http://csapp.cs.cmu.edu/3e/labs.html
-Online Lectures: https://ini.mediasite.com/mediasite/Catalog/catalogs/mediasiteadmin-14-513-intro-to-computer-systems-kesden
-I am following the CMU15-213 schedule of 2019 Fall http://www.cs.cmu.edu/afs/cs/academic/class/15213-f19/www/schedule.html
+- CSAPP Textbook & lab resources: http://csapp.cs.cmu.edu/3e/labs.html
+- Online Lectures: https://ini.mediasite.com/mediasite/Catalog/catalogs/mediasiteadmin-14-513-intro-to-computer-systems-kesden
+- I am following the CMU15-213 schedule of 2019 Fall, Here is the [schedule and course materials](http://www.cs.cmu.edu/afs/cs/academic/class/15213-f19/www/schedule.html)
 
 ## My Schedule
 
