@@ -26,13 +26,27 @@ queue_t *q_new()
 {
     queue_t *q =  malloc(sizeof(queue_t));
     /* What if malloc returned NULL? */
+    if (q==NULL)
+        return q;
     q->head = NULL;
+    q->tail = NULL;
+    q->size = 0;
     return q;
 }
 
 /* Free all storage used by queue */
 void q_free(queue_t *q)
 {
+    if (q==NULL)
+        return;
+    list_ele_t *p = q->head;
+    while (p != NULL)
+    {
+        list_ele_t *tmp = p->next;
+        free(p->value);
+        free(p);
+        p = tmp;
+    }
     /* How about freeing the list elements and the strings? */
     /* Free queue structure */
     free(q);
@@ -47,13 +61,37 @@ void q_free(queue_t *q)
  */
 bool q_insert_head(queue_t *q, char *s)
 {
-    list_ele_t *newh;
     /* What should you do if the q is NULL? */
+    if (q == NULL)
+        return false;
+    list_ele_t *newh;
     newh = malloc(sizeof(list_ele_t));
-    /* Don't forget to allocate space for the string and copy it */
     /* What if either call to malloc returns NULL? */
+    if (newh == NULL)
+        return false;
+
+    /* Don't forget to allocate space for the string and copy it */
+    int len=0;
+    while (s[len]!='\0')
+    {
+        len++;
+    }
+    char * newstr;
+    newstr = malloc(sizeof(char)*(len+1));
+    if (newstr == NULL)
+    {
+        free(newh);
+        return false;
+    }
+    for (int i=0;i<=len;++i){
+        newstr[i] = s[i];
+    }
+    newh->value = newstr;
     newh->next = q->head;
     q->head = newh;
+    if (q->tail == NULL)
+        q->tail = newh;
+    q->size++;
     return true;
 }
 
@@ -69,7 +107,33 @@ bool q_insert_tail(queue_t *q, char *s)
 {
     /* You need to write the complete code for this function */
     /* Remember: It should operate in O(1) time */
-    return false;
+    if (q == NULL)
+        return false;
+    list_ele_t *newh;
+    newh = malloc(sizeof(list_ele_t));
+    if (newh == NULL)
+        return false;
+    int len=0;
+    while (s[len]!='\0')
+    {
+        len++;
+    }
+    char * newstr;
+    newstr = malloc(sizeof(char)*(len+1));
+    if (newstr == NULL)
+    {
+        free(newh);
+        return false;
+    }
+    for (int i=0;i<=len;++i){
+        newstr[i] = s[i];
+    }
+    newh->value = newstr;
+    newh->next = NULL;
+    q->tail->next = newh;
+    q->tail = newh;
+    q->size++;
+    return true;
 }
 
 /*
@@ -83,7 +147,26 @@ bool q_insert_tail(queue_t *q, char *s)
 bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
 {
     /* You need to fix up this code. */
+    if (q==NULL || q->head == NULL)
+        return false;
+    list_ele_t *delem = q->head;
+    char* dstr = delem->value;
     q->head = q->head->next;
+    q->size--;
+    if (sp != NULL)
+    {
+        int i;
+        for (i=0;i<bufsize-1;++i)
+        {
+            sp[i] = dstr[i];
+            if (sp[i]=='\0')
+                break;
+        }
+        if (i==bufsize-1)
+            sp[i] = '\0';
+    }
+    free(delem);
+    free(dstr);
     return true;
 }
 
@@ -95,8 +178,11 @@ int q_size(queue_t *q)
 {
     /* You need to write the code for this function */
     /* Remember: It should operate in O(1) time */
-    return 0;
+    if (q==NULL)
+        return 0;
+    return q->size;
 }
+
 
 /*
   Reverse elements in queue
@@ -107,6 +193,21 @@ int q_size(queue_t *q)
  */
 void q_reverse(queue_t *q)
 {
+    if (q==NULL || q->head ==NULL)
+        return;
+    list_ele_t *p1 = q->head;
+    q->tail = p1;
+    list_ele_t *p2 = q->head->next;
+    while (p2!=NULL)
+    {
+        list_ele_t *tmp = p2;
+        p2 = p2->next;
+        tmp->next = p1;
+        p1 = tmp;
+    }
+    q->head->next = NULL;
+    q->head = p1;
+    return;
     /* You need to write the code for this function */
 }
 
