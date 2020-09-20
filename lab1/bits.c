@@ -143,7 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  return ~(~(x&~y)&~(~x&y));
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,9 +152,9 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+  int t1 = ~0;
+  int t2 = 0x1f;
+  return t1 << t2;
 }
 //2
 /*
@@ -165,7 +165,10 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  int tmin = x + 1;
+  int neg1 = tmin + x;
+  int zero = ~ neg1;
+  return !zero & !!(~x);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +179,9 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  int t = 0xAA;
+  int t1 = (t << 24) + (t << 16) + (t << 8) + t;
+  return !((~x) & t1);
 }
 /* 
  * negate - return -x 
@@ -186,7 +191,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return (1+ (~x));
 }
 //3
 /* 
@@ -199,7 +204,10 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int left = x >> 0x4;
+  int a3 = ~ (x >> 0x3);                // a3 = 0
+  int a2 = ~ (x >> 0x2) & ~ (x >> 0x1); // a2 = 0, a1 = 0,
+  return !((left) ^ 0x3) & (a3 | a2);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -209,7 +217,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int mask = (~(!x))+1;
+  return (z & mask) + (y & (~mask));
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -219,7 +228,10 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int pp_nn = ((!(x>>31) & !(y>>31)) | ((x>>31) & (y>>31))) & (!((y+((1+(~x))))>>31));
+  int inf = !(x ^ (1 << 31));
+  int np = (x>>31) & !(y>>31);
+  return pp_nn | inf | np;
 }
 //4
 /* 
@@ -231,6 +243,9 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
+  int left_mask = ~ 0x1;
+  int left = x & left_mask;
+
   return 2;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
