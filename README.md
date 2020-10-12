@@ -15,22 +15,22 @@
 | ~~Aug 29~~   	    | ~~Bits, Bytes, & Integers I~~           	| ~~2.1~~          	|              	|
 | ~~Sep 2~~    	    | 　                                    	| ~~Linux~~        	| 　           	|
 | ~~Sep 3~~    	    | ~~Bits, Bytes, & Integers II~~          	| ~~2.2-2.3~~      	|              	|
-| ~~Sep 5~~	        | Floating Point                        	| ~~2.4~~          	| :white_check_mark: L0 due       	|
-| ~~**Sep 9** ~~	| **Datalab** and Data Representations    	| **Lab1**         	| 　           	|
+| ~~Sep 5~~	        | ~~Floating Point~~                        	| ~~2.4~~          	| :white_check_mark: L0 due       	|
+| ~~**Sep 9**~~	| ~~**Datalab** and Data Representations~~    	| ~~**Lab1**~~     	| 　           	|
 | ~~Sep 10~~	    | Machine Prog: Basics                  	| ~~3.1-3.5~~      	|              	|
-| ~~Sep 12~~	    | Machine Prog: Control                 	| 3.6              	| L1 due       	|
+| ~~Sep 12~~	    | Machine Prog: Control                 	| 3.6              	| :white_check_mark:L1 due       	|
 | ~~**Sep 16**~~  	| **Bomb Lab**                            	| **Lab2**         	| 　           	|
 | ~~Sep 17~~	    | Machine Prog: Procedures              	| 3.7              	|              	|
 | ~~Sep 19~~	    | Machine Prog: Data                    	| 3.8-3.9          	|              	|
-| **Sep 23**   	    | **Attack Lab** and Stacks               	| **Lab3**         	| 　           	|
-| Sep 24     	    | Machine Prog: Advanced                	| 3.10             	| L2 due       	|
-| Sep 26     	    | The Memory Hierarchy                  	| 6.1-6.3          	|              	|
-| Sep 30     	    | C Review / C Bootcamp                 	| C         	    | 　           	|
-| Oct 1      	    | Cache Memories                        	| 6.4-6.7          	| L3 due       	|
-| Oct 3      	    | Design and Debugging                  	|                  	|              	|
-| Oct 7      	    | **Cache Lab** and blocking              	| **Lab4**         	| 　           	|
-| Oct 8      	    | Code Optimization                     	| 5                	|              	|
-| Oct 10     	    | Linking                               	| 7                	| L4 due       	|
+| ~~**Sep 23**~~    | **Attack Lab** and Stacks               	| **Lab3**         	| 　           	|
+| ~~Sep 24~~   	    | Machine Prog: Advanced                	| 3.10             	| L2 due       	|
+| ~~Sep 26~~   	    | The Memory Hierarchy                  	| 6.1-6.3          	|              	|
+| ~~Sep 30~~   	    | C Review / C Bootcamp                 	| C         	    | 　           	|
+| ~~Oct 1~~   	    | Cache Memories                        	| 6.4-6.7          	| L3 due       	|
+| ~~Oct 3~~   	    | Design and Debugging                  	|                  	|              	|
+| ~~Oct 7~~   	    | **Cache Lab** and blocking              	| **Lab4**         	| 　           	|
+| ~~Oct 8~~   	    | Code Optimization                     	| 5                	|              	|
+| ~~Oct 10~~   	    | Linking                               	| 7                	| L4 due       	|
 | Oct 13     	    |                                       	|                  	|              	|
 | Oct 14     	    | Exam Review                           	| Review           	| 　           	|
 | Oct 15     	    | Dynamic Memory Allocation: Basic      	| 9.9              	| Midterm exam 	|

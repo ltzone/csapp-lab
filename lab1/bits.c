@@ -243,10 +243,15 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  int left_mask = ~ 0x1;
-  int left = x & left_mask;
-
-  return 2;
+  int t1 = ~x + 1;
+  // when x = 0, t2 =0, else its MSB is 1
+  int t2 = x | t1;
+  // when x = 0, t3 = 0xffffffff, else t3's MSB is 0
+  int t3 = ~t2;
+  // logical shift
+  // return (unsigned)t3 >> 31;
+  // x = 0, mask = 0x1, else mask = 0x0
+  return (t3 >> 31) & 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -261,7 +266,23 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int b16,b8,b4,b2,b1,b0;
+  int sign=x>>31;
+  x = (sign&~x)|(~sign&x);
+
+
+  b16 = !!(x>>16)<<4;
+  x = x>>b16;
+  b8 = !!(x>>8)<<3;
+  x = x>>b8;
+  b4 = !!(x>>4)<<2;
+  x = x>>b4;
+  b2 = !!(x>>2)<<1;
+  x = x>>b2;
+  b1 = !!(x>>1);
+  x = x>>b1;
+  b0 = x;
+  return b16+b8+b4+b2+b1+b0+1;
 }
 //float
 /* 
@@ -276,7 +297,21 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned sign = uf >> 31;
+  unsigned exp = (uf << 1) >> 24;
+  unsigned val = (uf << 9) >> 9;
+  unsigned new_exp = exp + 1;
+  if (exp == 0xFF){ // NaN or infinity
+    return uf;
+  }
+  if (exp == 0){ // unnormalized
+    return (sign<<31) + (val << 1);
+  }
+  if (exp >> 8){
+    return ((sign << 8) + 0xFF) << 23;
+  } else {
+    return (((sign << 8) + new_exp) << 23) + val;
+  }
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -291,7 +326,26 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  unsigned inf = 1 << 31;
+  int sign = uf >> 31;
+  int exp = ((uf << 1) >> 24) - 127;
+  unsigned val = (((uf << 8)|(0x1 << 31)) >> 8);
+  // printf("0x%.8x\n",exp);
+  // printf("%d\n",exp<=0);
+  if (uf == 0) return 0;
+  if (exp < 0) return 0;
+  if (exp >= 32 || (uf & 0x7f80000)== 0x7f80000)
+    return inf;
+  if (exp <= 22){
+    val = val >> (23 - exp);
+  }
+  else
+  {
+    val = val << (exp - 23);
+  }
+  if (sign)
+    val = ~val + 1;
+  return val;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -307,5 +361,10 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int exp = x + 127;
+  if (x < 0)
+    return 0;
+  if (exp >= 255)
+    return 0x7f800000;
+  return exp << 23;
 }
