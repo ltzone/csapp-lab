@@ -376,7 +376,7 @@ bool_t should_read_imm(itype_t icode){
     case I_RMMOVQ:
     case I_MRMOVQ:
     case I_JMP:
-    case I_RET:
+    case I_CALL:
         should_read = TRUE;
         break;
     default:
@@ -421,16 +421,14 @@ void exec_alu(y64sim_t *sim, alu_t ifun, regid_t regA, regid_t regB){
     long_t valA = get_reg_val(sim->r, regA),
            valB = get_reg_val(sim->r, regB);
     long_t res = compute_alu(ifun, valA, valB);
-    set_reg_val(sim->r, valB, res);
+    set_reg_val(sim->r, regB, res);
     sim->cc = compute_cc(ifun, valA, valB, res);
 }
 
 bool_t exec_pushq(y64sim_t *sim, regid_t regA){
     long_t rsp_val = get_reg_val(sim->r, REG_RSP);
     long_t reg_val = get_reg_val(sim->r, regA);
-    if (regA != REG_RSP){
-        set_reg_val(sim->r, REG_RSP, rsp_val - 8);
-    }
+    set_reg_val(sim->r, REG_RSP, rsp_val - 8);
     if (!set_long_val(sim->m, rsp_val - 8, reg_val))
     {
         err_print("PC = 0x%lx, Invalid stack address 0x%lx", sim->pc, rsp_val - 8);
