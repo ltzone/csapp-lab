@@ -1,0 +1,45 @@
+# Litao Zhou, ics518030910407
+# implementation of rsum()
+    .pos 0
+    irmovq stack, %rsp
+    call main
+    halt
+
+main:
+    irmovq ele1, %rdi
+    call rsum # rsum(&ele1)
+    ret
+
+rsum:
+    andq %rdi, %rdi         # set CC
+    je base                 # if ls == NULL
+    mrmovq (%rdi), %r8      # read value
+    irmovq $8, %r9          # constant 8
+    addq %r9, %rdi          # ls->next
+    pushq %r8
+    mrmovq (%rdi), %rdi
+    call rsum               # rsum(ls->next)
+    popq %r8
+    addq %r8, %rax          # sum += ls -> val
+    ret
+    
+base:
+    xorq %rax, %rax         # ret_val = 0
+    ret
+
+
+# Sample linked list
+    .align 8
+ele1:
+    .quad 0x00a
+    .quad ele2
+ele2:
+    .quad 0x0b0
+    .quad ele3
+ele3:
+    .quad 0xc00
+    .quad 0
+
+    .pos 0x200
+stack:
+

@@ -1,0 +1,42 @@
+# Litao Zhou, ics518030910407
+# implementation of sum()
+    .pos 0
+    irmovq stack, %rsp
+    call main
+    halt
+
+main:
+    irmovq ele1, %rdi
+    call sum # sum(&ele1)
+    ret
+
+sum:
+    xorq %rax, %rax         # sum = 0
+    jmp test
+loop:
+    mrmovq (%rdi), %r8      # read value
+    addq %r8, %rax          # sum += ls -> val
+    irmovq $8, %r9          # constant 8
+    addq %r9, %rdi          # ls->next
+    mrmovq (%rdi), %rdi
+test:
+    andq %rdi, %rdi         # set CC
+    jne loop
+    ret
+
+
+# Sample linked list
+    .align 8
+ele1:
+    .quad 0x00a
+    .quad ele2
+ele2:
+    .quad 0x0b0
+    .quad ele3
+ele3:
+    .quad 0xc00
+    .quad 0
+
+    .pos 0x200
+stack:
+
