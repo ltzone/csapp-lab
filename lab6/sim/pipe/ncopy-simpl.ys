@@ -3,7 +3,7 @@
 # ncopy.ys - Copy a src block of len words to dst.
 # Return the number of positive words (>0) contained in src.
 #
-# Litao Zhou, ics518030910407
+# Include your name and ID here.
 #
 # idea: use loop unrolling to fill the bubble in load/use hazard
 # word_t ncopy(word_t *src, word_t *dst, word_t len)
@@ -47,46 +47,39 @@ ncopy:
 	# Loop header
 	xorq %rax,%rax		# count = 0;
 	irmovq $1, %rcx		# constant 1
-	irmovq $4, %r14		# constant 3
+	irmovq $3, %r14		# constant 3
+	irmovq $8, %r13		# constant 8
 Test:
 	subq %r14,%rdx		# len - 3
 	jl Loop0		# if so, goto Done:
 
 Unroll:
-	iaddq $4,%rdx		# restore len
+	addq %r14,%rdx		# restore len
 	mrmovq (%rdi), %r10	# read val1 from src...
-	iaddq $8, %rdi		# src++
+	addq %r13, %rdi		# src++
 	mrmovq (%rdi), %r11	# read val2 from src...
-	iaddq $8, %rdi		# src++
+	addq %r13, %rdi		# src++
 	mrmovq (%rdi), %r12 # read val3 from src...
-	iaddq $8, %rdi		# src++
-	mrmovq (%rdi), %r13 # read val4 from src...
-	iaddq $8, %rdi		# src++
+	addq %r13, %rdi		# src++
 	rmmovq %r10, (%rsi)	# ...and store val1 to dst
-	iaddq $8, %rsi		# dst++
+	addq %r13, %rsi		# dst++
 	rmmovq %r11, (%rsi)	# ...and store val2 to dst
-	iaddq $8, %rsi		# dst++
+	addq %r13, %rsi		# dst++
 	rmmovq %r12, (%rsi)	# ...and store val3 to dst
-	iaddq $8, %rsi		# dst++
-	rmmovq %r13, (%rsi)	# ...and store val3 to dst
-	iaddq $8, %rsi		# dst++
+	addq %r13, %rsi		# dst++
 	andq %r10, %r10		# val1 <= 0?
 	jle Npos1			# if so, goto Npos:
-	iaddq $1, %rax		# count++
+	addq %rcx, %rax		# count++
 Npos1:
 	andq %r11, %r11		# val2 <= 0?
 	jle Npos2			# if so, goto Npos:
-	iaddq $1, %rax		# count++
+	addq %rcx, %rax		# count++
 Npos2:
 	andq %r12, %r12		# val3 <= 0?
 	jle Npos3			# if so, goto Npos:
-	iaddq $1, %rax		# count++
+	addq %rcx, %rax		# count++
 Npos3:
-	andq %r13, %r13		# val4 <= 0?
-	jle Npos4			# if so, goto Npos:
-	iaddq $1, %rax		# count++
-Npos4:
-	subq %r14,%rdx		# len - 4
+	subq %r14,%rdx		# len - 3
 	jge Test				
 
 Loop0:
@@ -98,11 +91,11 @@ Loop:
 	rmmovq %r10, (%rsi)	# ...and store it to dst
 	andq %r10, %r10		# val <= 0?
 	jle Npos		# if so, goto Npos:
-	iaddq $1, %rax		# count++
+	addq %rcx, %rax		# count++
 Npos:
 	subq %rcx, %rdx		# len--
-	iaddq $8, %rdi		# src++
-	iaddq $8, %rsi		# dst++
+	addq %r13, %rdi		# src++
+	addq %r13, %rsi		# dst++
 	andq %rdx,%rdx		# len > 0?
 	jg Loop			# if so, goto Loop:
 ##################################################################
