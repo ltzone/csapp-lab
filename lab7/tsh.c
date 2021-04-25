@@ -13,6 +13,38 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+#include <stdint.h>
+
+
+
+
+char *itoa_safe(intmax_t value, char *result, int base) {
+    intmax_t tmp_value;
+    char *ptr, *ptr2, tmp_char;
+    if (base < 2 || base > 36) {
+        return NULL;
+    }
+
+    ptr = result;
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[35 + (tmp_value - value * base)];
+    } while (value);
+    if (tmp_value < 0)
+        *ptr++ = '-';
+    ptr2 = result;
+    result = ptr;
+    *ptr-- = '\0';
+    while (ptr2 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr2;
+        *ptr2++ = tmp_char;
+    }
+    return result;
+}
+
+
 /* Misc manifest constants */
 #define MAXLINE    1024   /* max line size */
 #define MAXARGS     128   /* max args on a command line */
@@ -165,6 +197,53 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    char *argv[MAXARGS];
+    char buf[MAXLINE];
+    int bg;
+    pid_t pid;
+
+    strcpy(buf, cmdline);
+    bg = parseline(buf, argv);
+    if (argv[0] == NULL)
+        return; /* ignore empty lines */
+    // printf("before fork %d [%d]\n", bg, nextjid);
+    if (!builtin_cmd(argv)){
+        pid = fork();
+        if (pid < 0) /* fork error */
+            unix_error("Fork error");
+        if (pid == 0) { /* child runs the user job */
+            pid_t pgid; /* set a new process group to the job, so that it can be killed */
+            if ((pgid = setpgid(0, 0)) < 0){
+                unix_error("Create process error");
+            }
+            printf("%d\n",getpgrp());
+            if (execve(argv[0], argv, environ) < 0) {
+                printf("%s: Command not found.\n", argv[0]);
+                exit(0);
+            }
+        } else { /* parent process */
+
+            // printf("parent %d [%d]\n", bg, nextjid);
+            if (!bg) {
+                addjob(jobs, pid, FG, cmdline); 
+                printf("[%d] (%d) %s", nextjid, pid, cmdline);
+            } else {
+                // printf("[%d]\n", jid);
+                printf("[%d] (%d) %s", nextjid, pid, cmdline);
+                fflush(stdout);
+                addjob(jobs, pid, BG, cmdline);
+            }
+        }
+        /* parent waits for foreground job to terminate */
+        if (!bg) {
+            int status;
+            waitfg(pid);
+            struct job_t* cur_job = getjobpid(jobs, pid);
+            if (cur_job->state == )
+            deletejob(jobs, pid);
+        }
+    }
+
     return;
 }
 
@@ -231,6 +310,20 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+    if (!strcmp(argv[0], "quit")) /* quit command */
+        exit(0);
+    if (!strcmp(argv[0], "fg")){
+        do_bgfg(argv);
+        return 1;
+    }
+    if (!strcmp(argv[0], "bg")){
+        do_bgfg(argv);
+        return 1;
+    }
+    if (!strcmp(argv[0], "jobs")){
+        listjobs(jobs);
+        return 1;
+    }
     return 0;     /* not a builtin command */
 }
 
@@ -263,7 +356,17 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    // pid_t pid = getpid();
+    // int jid = pid2jid(pid);
+    // deletejob(jobs, pid);
     return;
+}
+
+char* my_strcpy(char* dest, char* src){
+    char* new_dest = dest;
+    new_dest += strlen(src);
+    strcpy(dest, src);
+    return new_dest;
 }
 
 /* 
@@ -273,6 +376,31 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    int i = -1; 
+    for (i = 0; i < MAXJOBS; i++) {
+    	if (jobs[i].state == FG)
+            break;
+	}
+    if (i == -1) /* no foreground process, no effect */
+        return;
+
+    pid_t pid = jobs[i].pid;
+    jobs[i].state = ST;
+    kill(-pid, SIGINT);
+    char s[MAXLINE];
+    char* s_ptr = s;
+    s_ptr = my_strcpy(s_ptr, "Job [");
+    s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
+    s_ptr = my_strcpy(s_ptr, "] (");
+    s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
+    s_ptr = my_strcpy(s_ptr, ") stopped by signal ");
+    s_ptr = itoa_safe(sig, s_ptr, 10);
+    *(s_ptr++) = '\n';
+    *(s_ptr++) = '\0';
+    size_t to_write = strlen(s), written = 0;
+    while (to_write - written > 0){
+        written += write(STDOUT_FILENO, s, strlen(s));
+    }
     return;
 }
 
@@ -283,6 +411,31 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int i = -1; 
+    for (i = 0; i < MAXJOBS; i++) {
+    	if (jobs[i].state == FG)
+            break;
+	}
+    if (i == -1) /* no foreground process, no effect */
+        return;
+
+    pid_t pid = jobs[i].pid;
+    kill(-pid, SIGTSTP);
+    char s[MAXLINE];
+    char* s_ptr = s;
+    s_ptr = my_strcpy(s_ptr, "Job [");
+    s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
+    s_ptr = my_strcpy(s_ptr, "] (");
+    s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
+    s_ptr = my_strcpy(s_ptr, ") terminated by signal ");
+    s_ptr = itoa_safe(sig, s_ptr, 10);
+    *(s_ptr++) = '\n';
+    *(s_ptr++) = '\0';
+    size_t to_write = strlen(s), written = 0;
+    while (to_write - written > 0){
+        written += write(STDOUT_FILENO, s, strlen(s));
+    }
+    deletejob(jobs, pid);
     return;
 }
 
@@ -504,6 +657,3 @@ void sigquit_handler(int sig)
     printf("Terminating after receipt of SIGQUIT signal\n");
     exit(1);
 }
-
-
-
