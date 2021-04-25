@@ -5,36 +5,11 @@
 #
 # Litao Zhou, ics518030910407
 #
-# idea: use loop unrolling to fill the bubble in load/use hazard
-# word_t ncopy(word_t *src, word_t *dst, word_t len)
-# {
-#     word_t count = 0;
-#     word_t val;
-# 
-#     while (len > 3) {
-#   	val1 = *src++;
-#       val2 = *src++;
-#   	*dst++ = val1;
-#       *dst++ = val2;
-#   	if (val1 > 0)
-# 	      count++;
-#   	if (val2 > 0)
-# 	      count++;
-#		if (val3 > 0)
-# 	      count++;
-# 	    len -= 3;
-#     }
-#    while (len > 0) {
-#	   val = *src++;
-#	   *dst++ = val;
-#	   if (val > 0)
-#	       count++;
-#	   len--;
-#    }
-#    return count;
-# }
-
-# Describe how and why you modified the baseline code.
+# idea: 
+# 1. use loop unrolling (8-way) to fill the bubble in load/use hazard
+# 2. also unfold the remainder to a series of branches, to save the execution of src++/dst++ every loop
+# 3. for remainder, let branch taken to be "continue", not taken to be "return", because ret only happens once while continue can happen at most 7 times
+# 4. for remainder, fetch the next number in advance to fill the bubble in load/use hazard
 #
 ##################################################################
 # Do not modify this portion
@@ -45,66 +20,164 @@ ncopy:
 ##################################################################
 # You can modify this portion
 	# Loop header
-	xorq %rax,%rax		# count = 0;
-	irmovq $1, %rcx		# constant 1
-	irmovq $4, %r14		# constant 3
+#	xorq %rax,%rax		# count = 0;
 Test:
-	subq %r14,%rdx		# len - 3
-	jl Loop0		# if so, goto Done:
+	iaddq $-8,%rdx		# len <= 8 ?
+	jl Loop0		# if so, goto remainder:
 
 Unroll:
-	iaddq $4,%rdx		# restore len
-	mrmovq (%rdi), %r10	# read val1 from src...
-	iaddq $8, %rdi		# src++
-	mrmovq (%rdi), %r11	# read val2 from src...
-	iaddq $8, %rdi		# src++
-	mrmovq (%rdi), %r12 # read val3 from src...
-	iaddq $8, %rdi		# src++
-	mrmovq (%rdi), %r13 # read val4 from src...
-	iaddq $8, %rdi		# src++
-	rmmovq %r10, (%rsi)	# ...and store val1 to dst
-	iaddq $8, %rsi		# dst++
-	rmmovq %r11, (%rsi)	# ...and store val2 to dst
-	iaddq $8, %rsi		# dst++
-	rmmovq %r12, (%rsi)	# ...and store val3 to dst
-	iaddq $8, %rsi		# dst++
-	rmmovq %r13, (%rsi)	# ...and store val3 to dst
-	iaddq $8, %rsi		# dst++
-	andq %r10, %r10		# val1 <= 0?
-	jle Npos1			# if so, goto Npos:
-	iaddq $1, %rax		# count++
+	mrmovq 0(%rdi), %r8
+	mrmovq 8(%rdi), %r9	
+	mrmovq 16(%rdi), %r10 
+	mrmovq 24(%rdi), %r11	
+	mrmovq 32(%rdi), %r12	
+	mrmovq 40(%rdi), %r13 
+	mrmovq 48(%rdi), %r14	
+	mrmovq 56(%rdi), %rbp
+	rmmovq %r8, 0(%rsi) 
+	rmmovq %r9, 8(%rsi)
+	rmmovq %r10 ,16(%rsi)
+	rmmovq %r11	,24(%rsi)
+	rmmovq %r12	,32(%rsi)
+	rmmovq %r13 ,40(%rsi)
+	rmmovq %r14	,48(%rsi)
+	rmmovq %rbp, 56(%rsi)
+	iaddq $64, %rdi
+	iaddq $64, %rsi
+
 Npos1:
-	andq %r11, %r11		# val2 <= 0?
-	jle Npos2			# if so, goto Npos:
+	andq %r8, %r8
+	jle Npos2
 	iaddq $1, %rax		# count++
 Npos2:
-	andq %r12, %r12		# val3 <= 0?
-	jle Npos3			# if so, goto Npos:
+	andq %r9, %r9
+	jle Npos3
 	iaddq $1, %rax		# count++
 Npos3:
-	andq %r13, %r13		# val4 <= 0?
-	jle Npos4			# if so, goto Npos:
+	andq %r10, %r10
+	jle Npos4
 	iaddq $1, %rax		# count++
 Npos4:
-	subq %r14,%rdx		# len - 4
-	jge Test				
+	andq %r11, %r11
+	jle Npos5
+	iaddq $1, %rax		# count++
+Npos5:
+	andq %r12, %r12
+	jle Npos6
+	iaddq $1, %rax		# count++
+Npos6:
+	andq %r13, %r13
+	jle Npos7
+	iaddq $1, %rax		# count++
+Npos7:
+	andq %r14, %r14
+	jle Npos8
+	iaddq $1, %rax		# count++
+Npos8:
+	andq %rbp, %rbp
+	jle Npos9
+	iaddq $1, %rax		# count++
+Npos9:
+	iaddq $-8,%rdx		# len > 8 ?
+	jge Unroll		# if so, goto remainder:
+
 
 Loop0:
-	addq %r14,%rdx		# restore len
+	iaddq $8,%rdx		# restore len
 	andq %rdx,%rdx
 	jle Done			# if len = 0, end
 Loop:
     mrmovq (%rdi), %r10	# read val from src...
-	rmmovq %r10, (%rsi)	# ...and store it to dst
 	andq %r10, %r10		# val <= 0?
 	jle Npos		# if so, goto Npos:
 	iaddq $1, %rax		# count++
 Npos:
-	subq %rcx, %rdx		# len--
-	iaddq $8, %rdi		# src++
-	iaddq $8, %rsi		# dst++
-	andq %rdx,%rdx		# len > 0?
-	jg Loop			# if so, goto Loop:
+	rmmovq %r10, (%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jle Done			# if so, goto Done:
+	
+	mrmovq 8(%rdi), %r11	# read val from src...
+	andq %r11, %r11		# val <= 0?
+	jle Nrem1			
+	iaddq $1, %rax		# count++
+Nrem1:
+	rmmovq %r11, 8(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem1a			# if so, return:
+	ret
+Nrem1a:
+
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	andq %r10, %r10		# val <= 0?
+	jle Nrem2			
+	iaddq $1, %rax		# count++
+Nrem2:
+	rmmovq %r10, 16(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem2a			# if so, return:
+	ret
+Nrem2a:
+
+	mrmovq 32(%rdi), %r10	# read val from src...
+	andq %r11, %r11		# val <= 0?
+	jle Nrem3			
+	iaddq $1, %rax		# count++
+Nrem3:
+	rmmovq %r11, 24(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem3a			# if so, return:
+	ret
+Nrem3a:
+
+	mrmovq 40(%rdi), %r11	# read val from src...
+	andq %r10, %r10		# val <= 0?
+	jle Nrem4			
+	iaddq $1, %rax		# count++
+Nrem4:
+	rmmovq %r10, 32(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem4a			# if so, return:
+	ret
+Nrem4a:
+
+	mrmovq 48(%rdi), %r10	# read val from src...
+	andq %r11, %r11		# val <= 0?
+	jle Nrem5			
+	iaddq $1, %rax		# count++
+Nrem5:
+	rmmovq %r11, 40(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem5a			# if so, return:
+	ret
+
+Nrem5a:
+	mrmovq 56(%rdi), %r11	# read val from src...
+	andq %r10, %r10		# val <= 0?
+	jle Nrem6			
+	iaddq $1, %rax		# count++
+Nrem6:
+	rmmovq %r10, 48(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+	jg Nrem6a			# if so, return:
+	ret
+
+Nrem6a:
+	andq %r11, %r11		# val <= 0?
+	jle Nrem7			
+	iaddq $1, %rax		# count++
+Nrem7:
+	rmmovq %r11, 56(%rsi)	# ...and store it to dst
+	iaddq $-1, %rdx		# len--
+	andq %rdx,%rdx		# len <= 0?
+
 ##################################################################
 # Do not modify the following section of code
 # Function epilogue.
