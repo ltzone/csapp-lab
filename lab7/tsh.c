@@ -1,7 +1,7 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * <Put your name and ID here>
+ * Zhou Litao 518030910407
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -201,6 +201,11 @@ void eval(char *cmdline)
     char buf[MAXLINE];
     int bg;
     pid_t pid;
+    sigset_t mask, prev_mask;
+    if (sigemptyset(&mask) < 0)
+        unix_error("sigemptyset error");
+    if (sigaddset(&mask, SIGCHLD) < 0)
+        unix_error("sigaddset error");
 
     strcpy(buf, cmdline);
     bg = parseline(buf, argv);
@@ -208,6 +213,8 @@ void eval(char *cmdline)
         return; /* ignore empty lines */
     // printf("before fork %d [%d]\n", bg, nextjid);
     if (!builtin_cmd(argv)){
+        if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
+            unix_error("sigprocmask error");
         pid = fork();
         if (pid < 0) /* fork error */
             unix_error("Fork error");
@@ -216,7 +223,9 @@ void eval(char *cmdline)
             if ((pgid = setpgid(0, 0)) < 0){
                 unix_error("Create process error");
             }
-            printf("%d\n",getpgrp());
+            // printf("%d\n",getpgrp());
+            if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                unix_error("sigprocmask error");
             if (execve(argv[0], argv, environ) < 0) {
                 printf("%s: Command not found.\n", argv[0]);
                 exit(0);
@@ -225,22 +234,23 @@ void eval(char *cmdline)
 
             // printf("parent %d [%d]\n", bg, nextjid);
             if (!bg) {
+                // printf("[%d] (%d) %s", nextjid, pid, cmdline);
+                // fflush(stdout);
                 addjob(jobs, pid, FG, cmdline); 
-                printf("[%d] (%d) %s", nextjid, pid, cmdline);
+                if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                    unix_error("sigprocmask error");
             } else {
                 // printf("[%d]\n", jid);
                 printf("[%d] (%d) %s", nextjid, pid, cmdline);
                 fflush(stdout);
                 addjob(jobs, pid, BG, cmdline);
+                if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                    unix_error("sigprocmask error");
             }
         }
         /* parent waits for foreground job to terminate */
         if (!bg) {
-            int status;
             waitfg(pid);
-            struct job_t* cur_job = getjobpid(jobs, pid);
-            if (cur_job->state == )
-            deletejob(jobs, pid);
         }
     }
 
@@ -340,6 +350,16 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    for(;;){
+        unsigned int rem_time = 1;
+        while (rem_time = sleep(rem_time)){
+        }
+        struct job_t* cur_job = getjobpid(jobs, pid);
+        if (cur_job == NULL)
+            break;
+        if(cur_job->state != FG)
+            break;
+    }
     return;
 }
 
@@ -356,9 +376,44 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    // pid_t pid = getpid();
-    // int jid = pid2jid(pid);
-    // deletejob(jobs, pid);
+    int status, i;
+    pid_t pid;
+    sigset_t mask, prev_mask;
+    if (sigemptyset(&mask) < 0)
+        unix_error("sigemptyset error");
+    if (sigaddset(&mask, SIGCHLD) < 0)
+        unix_error("sigaddset error");
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED )) > 0) {
+        /* reaps children in no particular order  */
+        if (WIFEXITED(status)) {
+            if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
+                unix_error("sigprocmask error");
+            deletejob(jobs,pid);
+            if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                    unix_error("sigprocmask error");
+        } else if (WIFSIGNALED(status)){
+            int inter_sig = WTERMSIG(status);
+            if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
+                    unix_error("sigprocmask error");
+            if (inter_sig == SIGINT) {
+                deletejob(jobs,pid);
+            }
+            if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                unix_error("sigprocmask error");
+        } else if (WIFSTOPPED(status)) {
+            int inter_sig = WSTOPSIG(status);
+            if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
+                    unix_error("sigprocmask error");
+            if (inter_sig == SIGTSTP) {
+                struct job_t* cur_job = getjobpid(jobs,pid);
+                if (cur_job != NULL){
+                    cur_job->state = ST;
+                }
+            }
+            if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
+                unix_error("sigprocmask error");
+        }
+    }
     return;
 }
 
@@ -381,11 +436,10 @@ void sigint_handler(int sig)
     	if (jobs[i].state == FG)
             break;
 	}
-    if (i == -1) /* no foreground process, no effect */
+    if (i == MAXJOBS) /* no foreground process, no effect */
         return;
 
     pid_t pid = jobs[i].pid;
-    jobs[i].state = ST;
     kill(-pid, SIGINT);
     char s[MAXLINE];
     char* s_ptr = s;
@@ -393,7 +447,7 @@ void sigint_handler(int sig)
     s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
     s_ptr = my_strcpy(s_ptr, "] (");
     s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, ") stopped by signal ");
+    s_ptr = my_strcpy(s_ptr, ") terminated by signal ");
     s_ptr = itoa_safe(sig, s_ptr, 10);
     *(s_ptr++) = '\n';
     *(s_ptr++) = '\0';
@@ -411,12 +465,12 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    int i = -1; 
+    int i;
     for (i = 0; i < MAXJOBS; i++) {
     	if (jobs[i].state == FG)
             break;
 	}
-    if (i == -1) /* no foreground process, no effect */
+    if (i == MAXJOBS) /* no foreground process, no effect */
         return;
 
     pid_t pid = jobs[i].pid;
@@ -427,7 +481,7 @@ void sigtstp_handler(int sig)
     s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
     s_ptr = my_strcpy(s_ptr, "] (");
     s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, ") terminated by signal ");
+    s_ptr = my_strcpy(s_ptr, ") stopped by signal ");
     s_ptr = itoa_safe(sig, s_ptr, 10);
     *(s_ptr++) = '\n';
     *(s_ptr++) = '\0';
@@ -435,7 +489,6 @@ void sigtstp_handler(int sig)
     while (to_write - written > 0){
         written += write(STDOUT_FILENO, s, strlen(s));
     }
-    deletejob(jobs, pid);
     return;
 }
 
