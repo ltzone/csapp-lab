@@ -117,6 +117,14 @@ void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
 
+
+char* my_strcpy(char* dest, char* src){
+    char* new_dest = dest;
+    new_dest += strlen(src);
+    strcpy(dest, src);
+    return new_dest;
+}
+
 /*
  * main - The shell's main routine 
  */
@@ -322,7 +330,7 @@ int builtin_cmd(char **argv)
 {
     if (!strcmp(argv[0], "quit")) /* quit command */
         exit(0);
-    if (!strcmp(argv[0], "fg")){
+    if (!strcmp(argv[0], "fg")){ // TODO: check syntax
         do_bgfg(argv);
         return 1;
     }
@@ -342,6 +350,31 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    int jid;
+    if (sscanf(argv[1], "%%%d", &jid) == 0) {
+        pid_t pid;
+        sscanf(argv[1], "%d", &pid);
+        jid = pid2jid(pid);
+    }
+    struct job_t *cur_job = getjobjid(jobs, jid);
+
+    if (cur_job == NULL)
+        return;
+
+    if (!strcmp(argv[0], "bg")){
+        cur_job->state = BG;
+        printf("[%d] (%d) %s", cur_job->jid, cur_job->pid, cur_job->cmdline);
+        fflush(stdout);
+        kill(-cur_job->pid, SIGCONT);
+    }
+
+    if (!strcmp(argv[0], "fg")){
+        cur_job->state = FG;
+        kill(-cur_job->pid, SIGCONT);
+        waitfg(cur_job->pid);
+    }
+
+
     return;
 }
 
@@ -376,7 +409,7 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    int status, i;
+    int status;
     pid_t pid;
     sigset_t mask, prev_mask;
     if (sigemptyset(&mask) < 0)
@@ -396,6 +429,25 @@ void sigchld_handler(int sig)
             if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
                     unix_error("sigprocmask error");
             if (inter_sig == SIGINT) {
+                struct job_t * cur_job = getjobpid(jobs,pid);
+                if (cur_job == NULL)
+                    continue;
+
+                char s[MAXLINE];
+                char* s_ptr = s;
+                s_ptr = my_strcpy(s_ptr, "Job [");
+                s_ptr = itoa_safe(cur_job->jid, s_ptr, 10);
+                s_ptr = my_strcpy(s_ptr, "] (");
+                s_ptr = itoa_safe(cur_job->pid, s_ptr, 10);
+                s_ptr = my_strcpy(s_ptr, ") terminated by signal ");
+                s_ptr = itoa_safe(SIGINT, s_ptr, 10);
+                *(s_ptr++) = '\n';
+                *(s_ptr++) = '\0';
+                size_t to_write = strlen(s), written = 0;
+                while (to_write - written > 0){
+                    written += write(STDOUT_FILENO, s, strlen(s));
+                }
+
                 deletejob(jobs,pid);
             }
             if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
@@ -405,9 +457,24 @@ void sigchld_handler(int sig)
             if (sigprocmask(SIG_BLOCK, &mask, &prev_mask) < 0)
                     unix_error("sigprocmask error");
             if (inter_sig == SIGTSTP) {
-                struct job_t* cur_job = getjobpid(jobs,pid);
-                if (cur_job != NULL){
-                    cur_job->state = ST;
+                struct job_t * cur_job = getjobpid(jobs,pid);
+                if (cur_job == NULL)
+                    continue;
+
+                cur_job->state = ST;
+                char s[MAXLINE];
+                char* s_ptr = s;
+                s_ptr = my_strcpy(s_ptr, "Job [");
+                s_ptr = itoa_safe(cur_job->jid, s_ptr, 10);
+                s_ptr = my_strcpy(s_ptr, "] (");
+                s_ptr = itoa_safe(cur_job->pid, s_ptr, 10);
+                s_ptr = my_strcpy(s_ptr, ") stopped by signal ");
+                s_ptr = itoa_safe(SIGTSTP, s_ptr, 10);
+                *(s_ptr++) = '\n';
+                *(s_ptr++) = '\0';
+                size_t to_write = strlen(s), written = 0;
+                while (to_write - written > 0){
+                    written += write(STDOUT_FILENO, s, strlen(s));
                 }
             }
             if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0)
@@ -415,13 +482,6 @@ void sigchld_handler(int sig)
         }
     }
     return;
-}
-
-char* my_strcpy(char* dest, char* src){
-    char* new_dest = dest;
-    new_dest += strlen(src);
-    strcpy(dest, src);
-    return new_dest;
 }
 
 /* 
@@ -441,20 +501,6 @@ void sigint_handler(int sig)
 
     pid_t pid = jobs[i].pid;
     kill(-pid, SIGINT);
-    char s[MAXLINE];
-    char* s_ptr = s;
-    s_ptr = my_strcpy(s_ptr, "Job [");
-    s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, "] (");
-    s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, ") terminated by signal ");
-    s_ptr = itoa_safe(sig, s_ptr, 10);
-    *(s_ptr++) = '\n';
-    *(s_ptr++) = '\0';
-    size_t to_write = strlen(s), written = 0;
-    while (to_write - written > 0){
-        written += write(STDOUT_FILENO, s, strlen(s));
-    }
     return;
 }
 
@@ -475,20 +521,6 @@ void sigtstp_handler(int sig)
 
     pid_t pid = jobs[i].pid;
     kill(-pid, SIGTSTP);
-    char s[MAXLINE];
-    char* s_ptr = s;
-    s_ptr = my_strcpy(s_ptr, "Job [");
-    s_ptr = itoa_safe(jobs[i].jid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, "] (");
-    s_ptr = itoa_safe(jobs[i].pid, s_ptr, 10);
-    s_ptr = my_strcpy(s_ptr, ") stopped by signal ");
-    s_ptr = itoa_safe(sig, s_ptr, 10);
-    *(s_ptr++) = '\n';
-    *(s_ptr++) = '\0';
-    size_t to_write = strlen(s), written = 0;
-    while (to_write - written > 0){
-        written += write(STDOUT_FILENO, s, strlen(s));
-    }
     return;
 }
 
